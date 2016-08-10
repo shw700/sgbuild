@@ -136,8 +136,9 @@ SUBGRAPH_REPOS="$SUBGRAPH_BUILD_REPOS $SUBGRAPH_BUILD_REPOS_OTHER shw700/sgbuild
 if [ $DO_CREATE -eq 1 -a $DO_FRESHEN -eq 1 ]; then
 	echo "Error: -c and -f options cannot be passed together.";
 	exit 1;
-elif [ $DO_CREATE -eq 1 -o $DO_FRESHEN -eq 1 ]; then
-	echo "Sup";
+elif [ \( $DO_CREATE -eq 1 -o $DO_FRESHEN -eq 1 \) -a $JUST_BUILD -eq 1 ]; then
+	echo "Error: cannot specify -n along with either -c or -f.";
+	exit 1;
 fi
 
 if [ $DO_CREATE -eq 1 ]; then
@@ -151,6 +152,8 @@ elif [ $DO_FRESHEN -eq 1 ]; then
 	echo "Done."
 	exit 0;
 fi
+
+export GOPATH=$CURDIR/build
 
 if [ $JUST_BUILD -eq 0 ]; then
 	create_repos $CURDIR;
@@ -226,8 +229,6 @@ echo "Done with initial builds... moving to oz."
 mkdir -p $CURDIR/build/src/github.com/subgraph/ || { echo "Unable to create staging directory for oz build ... Failing."; exit 1; }
 cp -R $CURDIR/oz $CURDIR/build/src/github.com/subgraph/ || { echo "Unable to copy latest oz source to staging directory ... Failing."; exit 1; }
 
-export GOPATH=$CURDIR/build
-
 cd $CURDIR/build/src/github.com/subgraph/oz || { echo "Unable to change directory to oz staging directory ... Failing."; exit 1; }
 
 echo "Building oz subsystem ..."
@@ -286,6 +287,9 @@ install_program /usr/bin/macouflage
 
 echo "Updating macouflage-multi ..."
 install_program /usr/bin/macouflage-multi
+
+echo "Updating sublogmon ..."
+install_program /usr/sbin/sublogmon
 
 chown -R user.user $CURDIR/build
 

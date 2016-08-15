@@ -242,7 +242,7 @@ fi
 
 if [ $GENERATE_CONSTANTS -eq 0 ]; then
 	pushd $CURDIR/sgconstants >/dev/null || { echo "Error changing to directory to constants repo!"; exit 1; }
-	CUR_HASH=`md5sum ./gogen.sh`
+	CUR_HASH=`md5sum ./gogen.sh ./getconsts.sh`
 
 	if [ -f $CURDIR/build/src/github.com/shw700/constants/hash ]; then
 		LAST_HASH=`cat $CURDIR/build/src/github.com/shw700/constants/hash`
@@ -262,7 +262,7 @@ if [ $GENERATE_CONSTANTS -eq 0 ]; then
 else
 	echo "+ Generating constants ...";
 	./gogen.sh > $CURDIR/build/src/github.com/shw700/constants/constants.go || { echo "Unable to create constants definition source file ... Failing."; exit 1; }
-	md5sum ./gogen.sh > $CURDIR/build/src/github.com/shw700/constants/hash;
+	md5sum ./gogen.sh ./getconsts.sh > $CURDIR/build/src/github.com/shw700/constants/hash;
 fi
 
 popd >/dev/null;

@@ -45,7 +45,7 @@ create_repos() {
 
 		if [ ! -d $NEXTDIR ]; then
 			echo "Attempting to clone contents of $i from github ..."
-			git clone https://github.com/$PROJECT || { echo "Repo clone failed!"; exit 1; }
+			git clone https://$PROJECT || { echo "Repo clone failed!"; exit 1; }
 		fi
 
 	done
@@ -76,6 +76,8 @@ get_ext_deps() {
 	echo "Ensuring presence of external dependencies ..."
 	apt-get install libacl1-dev || { echo "Could not install package libacl1-dev for oz build... Failed."; exit 1; }
 	echo "+ libacl1-dev OK."
+	apt-get install libnetfilter-queue-dev || { echo "Could not install package libnetfilter-queue-dev for oz build... Failed."; exit 1; }
+	echo "+ libnetfilter-queue-dev OK."
 	echo "Dependencies all OK."
 }
 
@@ -131,7 +133,7 @@ done
 SUBGRAPH_BUILD_DEPENDENCIES="golang.org/x/exp/inotify golang.org/x/sys/unix github.com/op/go-logging github.com/yawning/bulb github.com/TheCreeper/go-notify github.com/codegangsta/cli github.com/BurntSushi/xdg"
 SUBGRAPH_BUILD_REPOS="github.com/shw700/tortime github.com/shw700/sublogmon github.com/twtiger/gosecco"
 SUBGRAPH_BUILD_REPOS_OTHER="github.com/subgraph/go-procsnitch github.com/subgraph/procsnitchd github.com/subgraph/roflcoptor github.com/subgraph/fw-daemon github.com/subgraph/libmacouflage github.com/subgraph/macouflage github.com/subgraph/macouflage-multi github.com/subgraph/paxrat github.com/subgraph/subgraph_metaproxy github.com/subgraph/go-xdgdirs"
-SUBGRAPH_REPOS="$SUBGRAPH_BUILD_REPOS $SUBGRAPH_BUILD_REPOS_OTHER shw700/sgbuild shw700/sgconstants subgraph/oz subgraph/subgraph_desktop_stretch subgraph/gnome-shell-extension-torstatus subgraph/gnome-shell-extension-ozshell subgraph/subgraph-os-issues subgraph/subgraph-os-apparmor-profiles subgraph/sgos_handbook subgraph/subgraph-archive-keyring subgraph/subgraph-kernel-configs subgraph/go-seccomp subgraph/defector"
+SUBGRAPH_REPOS="$SUBGRAPH_BUILD_REPOS $SUBGRAPH_BUILD_REPOS_OTHER github.com/shw700/sgbuild github.com/shw700/sgconstants github.com/subgraph/oz github.com/subgraph/subgraph_desktop_stretch github.com/subgraph/gnome-shell-extension-torstatus github.com/subgraph/gnome-shell-extension-ozshell github.com/subgraph/subgraph-os-issues github.com/subgraph/subgraph-os-apparmor-profiles github.com/subgraph/sgos_handbook github.com/subgraph/subgraph-archive-keyring github.com/subgraph/subgraph-kernel-configs github.com/subgraph/go-seccomp github.com/subgraph/defector"
 
 if [ $DO_CREATE -eq 1 -a $DO_FRESHEN -eq 1 ]; then
 	echo "Error: -c and -f options cannot be passed together.";
@@ -228,6 +230,47 @@ echo "Done with initial builds... moving to oz."
 
 mkdir -p $CURDIR/build/src/github.com/subgraph/ || { echo "Unable to create staging directory for oz build ... Failing."; exit 1; }
 cp -R $CURDIR/oz $CURDIR/build/src/github.com/subgraph/ || { echo "Unable to copy latest oz source to staging directory ... Failing."; exit 1; }
+
+echo "Making sure that subgraph generated constants are up-to-date ...";
+GENERATE_CONSTANTS=0
+if [ ! -d $CURDIR/build/src/github.com/shw700/constants ]; then
+	echo "Constants directory did not exist ... Creating.";
+	mkdir -p $CURDIR/build/src/github.com/shw700/constants || { echo "Unable to create constants directory at $CURDIR/build/src/github.com/shw700/constants ... Failing."; exit 1; }
+	pushd $CURDIR/sgconstants >/dev/null || { echo "Error changing to directory to constants repo!"; exit 1; }
+	GENERATE_CONSTANTS=1
+fi
+
+if [ $GENERATE_CONSTANTS -eq 0 ]; then
+	pushd $CURDIR/sgconstants >/dev/null || { echo "Error changing to directory to constants repo!"; exit 1; }
+	CUR_HASH=`md5sum ./gogen.sh`
+
+	if [ -f $CURDIR/build/src/github.com/shw700/constants/hash ]; then
+		LAST_HASH=`cat $CURDIR/build/src/github.com/shw700/constants/hash`
+
+		if [ "$CUR_HASH" != "$LAST_HASH" ]; then
+			GENERATE_CONSTANTS=1;
+		fi
+
+	else
+		GENERATE_CONSTANTS=1;
+	fi
+
+fi
+
+if [ $GENERATE_CONSTANTS -eq 0 ]; then
+	echo "+ Skipping over constants generation: appears to be up-to-date.";
+else
+	echo "+ Generating constants ...";
+	./gogen.sh > $CURDIR/build/src/github.com/shw700/constants/constants.go || { echo "Unable to create constants definition source file ... Failing."; exit 1; }
+	md5sum ./gogen.sh > $CURDIR/build/src/github.com/shw700/constants/hash;
+fi
+
+popd >/dev/null;
+echo "+ Done."
+
+echo "Building constants definitions ...";
+(cd $GOPATH && go install github.com/shw700/constants) || { echo "Unable to build constants definitions ... Failing."; exit 1; }
+
 
 cd $CURDIR/build/src/github.com/subgraph/oz || { echo "Unable to change directory to oz staging directory ... Failing."; exit 1; }
 

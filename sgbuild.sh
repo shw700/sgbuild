@@ -130,9 +130,10 @@ while getopts "cdfhn" opt; do
 done
 
 # orchid, sgmail?
-SUBGRAPH_BUILD_DEPENDENCIES="gopkg.in/fsnotify.v1 golang.org/x/sys/unix github.com/op/go-logging github.com/yawning/bulb github.com/TheCreeper/go-notify github.com/codegangsta/cli github.com/BurntSushi/xdg"
-SUBGRAPH_BUILD_REPOS="github.com/shw700/tortime github.com/shw700/sublogmon github.com/twtiger/gosecco"
-SUBGRAPH_BUILD_REPOS_OTHER="github.com/subgraph/ozipc github.com/subgraph/go-procsnitch github.com/subgraph/procsnitchd github.com/subgraph/roflcoptor github.com/subgraph/fw-daemon github.com/subgraph/libmacouflage github.com/subgraph/macouflage github.com/subgraph/macouflage-multi github.com/subgraph/paxrat github.com/subgraph/subgraph_metaproxy github.com/subgraph/go-xdgdirs"
+SUBGRAPH_BUILD_DEPENDENCIES="golang.org/x/sys/unix github.com/op/go-logging github.com/yawning/bulb github.com/codegangsta/cli github.com/BurntSushi/xdg github.com/subgraph/inotify github.com/gotk3/gotk3 github.com/godbus/dbus github.com/TheCreeper/go-notify"
+SUBGRAPH_BUILD_REPOS="github.com/shw700/tortime github.com/shw700/sublogmon github.com/twtiger/gosecco github.com/shw700/sublogmon-gui github.com/shw700/oztool"
+#SUBGRAPH_BUILD_REPOS_OTHER="github.com/subgraph/ozipc github.com/subgraph/go-procsnitch github.com/subgraph/procsnitchd github.com/subgraph/roflcoptor github.com/subgraph/fw-daemon github.com/subgraph/libmacouflage github.com/subgraph/macouflage github.com/subgraph/macouflage-multi github.com/subgraph/paxrat github.com/subgraph/subgraph_metaproxy github.com/subgraph/go-xdgdirs"
+SUBGRAPH_BUILD_REPOS_OTHER="github.com/subgraph/ozipc github.com/subgraph/go-procsnitch github.com/subgraph/procsnitchd github.com/subgraph/roflcoptor github.com/subgraph/libmacouflage github.com/subgraph/macouflage github.com/subgraph/macouflage-multi github.com/subgraph/subgraph_metaproxy github.com/subgraph/go-xdgdirs github.com/subgraph/go-nfnetlink github.com/subgraph/fw-daemon"
 SUBGRAPH_REPOS="$SUBGRAPH_BUILD_REPOS $SUBGRAPH_BUILD_REPOS_OTHER github.com/shw700/sgbuild github.com/shw700/sgconstants github.com/subgraph/oz github.com/subgraph/subgraph_desktop_stretch github.com/subgraph/gnome-shell-extension-torstatus github.com/subgraph/gnome-shell-extension-ozshell github.com/subgraph/subgraph-os-issues github.com/subgraph/subgraph-os-apparmor-profiles github.com/subgraph/sgos_handbook github.com/subgraph/subgraph-archive-keyring github.com/subgraph/subgraph-kernel-configs github.com/subgraph/go-seccomp github.com/subgraph/defector github.com/subgraph/subgraph-oz-profiles"
 
 if [ $DO_CREATE -eq 1 -a $DO_FRESHEN -eq 1 ]; then
@@ -189,6 +190,18 @@ if [ $JUST_BUILD -eq 0 ]; then
 	echo "Checking to make sure dependencies are up-to-date ...";
 	
 	for i in $SUBGRAPH_BUILD_DEPENDENCIES; do
+
+		if [ $i == "github.com/gotk3/gotk3" ]; then
+			go get -d $i;
+			go build github.com/gotk3/gotk3/gdk || { echo "Unable to install dependency: gotk3/gdk; Failing."; exit 1; }
+			go build github.com/gotk3/gotk3/gtk || { echo "Unable to install dependency: gotk3/gtk; Failing."; exit 1; }
+			go build github.com/gotk3/gotk3/glib || { echo "Unable to install dependency: gotk3/glib; Failing."; exit 1; }
+			go build github.com/gotk3/gotk3/pango || { echo "Unable to install dependency: gotk3/pango; Failing."; exit 1; }
+
+			echo "+ $i is OK.";
+			continue
+		fi
+
 		go get $i || { echo "Unable to retrieve go dependency: $i ... Failing."; exit 1; }
 		echo "+ $i is OK.";
 	done
@@ -271,6 +284,9 @@ echo "+ Done."
 echo "Building constants definitions ...";
 (cd $GOPATH && go install github.com/shw700/constants) || { echo "Unable to build constants definitions ... Failing."; exit 1; }
 
+echo "Building constls ...";
+(cp -R $CURDIR/sgconstants/constls $CURDIR/build/src/github.com/shw700/constants) || { echo "Unable to copy constls source to build dir ... Failing."; exit 1; }
+go install github.com/shw700/constants/constls || { echo "go build/install of constls failed! Exiting"; exit 1; }
 
 cd $CURDIR/build/src/github.com/subgraph/oz || { echo "Unable to change directory to oz staging directory ... Failing."; exit 1; }
 
